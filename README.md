@@ -12,11 +12,14 @@ This project is ideal for developers and engineers looking to bridge AI-driven w
 
 - **Read OPC UA Nodes**: Retrieve real-time values from industrial devices.
 - **Write to OPC UA Nodes**: Control devices by writing values to specified nodes.
+- **Browse nodes**: Request to list allopcua  nodes
+- **Read multiplt OPC UA Nodes**: Retrieve multiple real-time values from devices.
+- **Write to multiple OPC UA Nodes**: Control devices by writing values to multiple nodes.
 - **Seamless Integration**: Works with MCP clients like Claude Desktop for natural language interaction.
 
 
 ### Tools
-The server exposes two tools:
+The server exposes five tools:
 - **`read_opcua_node`**:
   - **Description**: Read the value of a specific OPC UA node.
   - **Parameters**:
@@ -29,6 +32,16 @@ The server exposes two tools:
     - `node_id` (str): OPC UA node ID (e.g., `ns=2;i=3`).
     - `value` (str): Value to write (converted based on node type).
   - **Returns**: A success or error message (e.g., "Successfully wrote 100 to node ns=2;i=3").
+
+- **`Browse nodes`**:
+  - **Description**: Read the value of a specific OPC UA node.
+
+- **`Read multiplt OPC UA Nodes`**:
+  - **Description**: Read the value of a specific OPC UA node.
+
+- **`Write to multiple OPC UA Nodes`**:
+  - **Description**: Read the value of a specific OPC UA node.
+
 
 ### Example Prompts
 
