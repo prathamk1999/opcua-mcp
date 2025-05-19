@@ -14,7 +14,7 @@ ATTRIBUTE_GETTERS = {
     "BrowseName": lambda node: node.get_browse_name(),      # -> ua.QualifiedName
     "DisplayName": lambda node: node.get_display_name(),     # -> ua.LocalizedText
     "Description": lambda node: node.get_description(),     # -> ua.LocalizedText
-    "Value": lambda node: node.get_value(),           # -> 實際值 (variant)
+    "Value": lambda node: node.get_value(),           # -> (variant)
     "DataType": lambda node: node.get_data_type(),        # -> NodeId
     "UserAccessLevel": lambda node: node.get_user_access_level(),# -> ua.AccessLevel enum
     "AccessLevel": lambda node: node.get_access_level(),      # -> ua.AccessLevel enum
@@ -99,7 +99,6 @@ def browse_opcua_node_children(node_id: str, ctx: Context) -> str:
         node = client.get_node(node_id)
         children = node.get_children()
         
-        # 將結果格式化為更易讀的列表
         children_info = []
         for child in children:
             try:
@@ -109,16 +108,14 @@ def browse_opcua_node_children(node_id: str, ctx: Context) -> str:
                     "browse_name": f"{browse_name.NamespaceIndex}:{browse_name.Name}"
                 })
             except Exception as e:
-                 # 有些節點可能無法獲取 BrowseName，進行容錯
                  children_info.append({
                      "node_id": child.nodeid.to_string(),
                      "browse_name": f"Error getting name: {e}"
                  })
 
-        # 使用 repr 轉換為字串，避免 JSON 轉換問題，或直接回傳 JSON 字串
         # import json
         # return json.dumps(children_info, indent=2) 
-        return f"Children of {node_id}: {children_info!r}" # 使用 repr 比較簡單
+        return f"Children of {node_id}: {children_info!r}" 
         
     except Exception as e:
         return f"Error Browse children of node {node_id}: {str(e)}"
@@ -154,13 +151,11 @@ def read_multiple_opcua_nodes(node_ids: List[str], ctx: Context) -> str:
         
         return f"Read multiple nodes values: {results!r}"
         
-    except ua.UaError as e: # 捕捉特定的 OPC UA 錯誤
-         # 格式化 OPC UA 錯誤碼和名稱
+    except ua.UaError as e:
          status_name = e.code_as_name() if hasattr(e, 'code_as_name') else 'Unknown'
          status_code_hex = f"0x{e.code:08X}" if hasattr(e, 'code') else 'N/A'
          return f"Error reading multiple nodes {node_ids}: OPC UA Error - Status: {status_name} ({status_code_hex})"
     except Exception as e:
-        # 捕捉其他所有潛在異常
         return f"Error reading multiple nodes {node_ids}: {type(e).__name__} - {str(e)}"
     
 @mcp.tool()
