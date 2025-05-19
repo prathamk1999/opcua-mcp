@@ -13,7 +13,7 @@ This project is ideal for developers and engineers looking to bridge AI-driven w
 - **Read OPC UA Nodes**: Retrieve real-time values from industrial devices.
 - **Write to OPC UA Nodes**: Control devices by writing values to specified nodes.
 - **Browse nodes**: Request to list allopcua  nodes
-- **Read multiplt OPC UA Nodes**: Retrieve multiple real-time values from devices.
+- **Read multiple OPC UA Nodes**: Retrieve multiple real-time values from devices.
 - **Write to multiple OPC UA Nodes**: Control devices by writing values to multiple nodes.
 - **Seamless Integration**: Works with MCP clients like Claude Desktop for natural language interaction.
 
@@ -36,7 +36,7 @@ The server exposes five tools:
 - **`Browse nodes`**:
   - **Description**: Read the value of a specific OPC UA node.
 
-- **`Read multiplt OPC UA Nodes`**:
+- **`Read multiple OPC UA Nodes`**:
   - **Description**: Read the value of a specific OPC UA node.
 
 - **`Write to multiple OPC UA Nodes`**:
