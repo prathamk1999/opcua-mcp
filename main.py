@@ -4,9 +4,21 @@ from contextlib import asynccontextmanager
 from typing import AsyncIterator
 import asyncio
 import os
+from typing import List, Dict, Any
+from opcua import ua # 
 
 server_url = os.getenv("OPCUA_SERVER_URL", "opc.tcp://localhost:4840")
 
+ATTRIBUTE_GETTERS = {
+    "NodeClass": lambda node: node.get_node_class(),       # -> ua.NodeClass enum
+    "BrowseName": lambda node: node.get_browse_name(),      # -> ua.QualifiedName
+    "DisplayName": lambda node: node.get_display_name(),     # -> ua.LocalizedText
+    "Description": lambda node: node.get_description(),     # -> ua.LocalizedText
+    "Value": lambda node: node.get_value(),           # -> 實際值 (variant)
+    "DataType": lambda node: node.get_data_type(),        # -> NodeId
+    "UserAccessLevel": lambda node: node.get_user_access_level(),# -> ua.AccessLevel enum
+    "AccessLevel": lambda node: node.get_access_level(),      # -> ua.AccessLevel enum
+}
 # Manage the lifecycle of the OPC UA client connection
 @asynccontextmanager
 async def opcua_lifespan(server: FastMCP) -> AsyncIterator[dict]:
@@ -70,6 +82,141 @@ def write_opcua_node(node_id: str, value: str, ctx: Context) -> str:
     except Exception as e:
         return f"Error writing to node {node_id}: {str(e)}"
 
+@mcp.tool()
+def browse_opcua_node_children(node_id: str, ctx: Context) -> str:
+    """
+    Browse the children of a specific OPC UA node.
+
+    Parameters:
+        node_id (str): The OPC UA node ID to browse (e.g., 'ns=0;i=85' for Objects folder).
+
+    Returns:
+        str: A string representation of a list of child nodes, including their NodeId and BrowseName.
+             Returns an error message on failure.
+    """
+    client = ctx.request_context.lifespan_context["opcua_client"]
+    try:
+        node = client.get_node(node_id)
+        children = node.get_children()
+        
+        # 將結果格式化為更易讀的列表
+        children_info = []
+        for child in children:
+            try:
+                browse_name = child.get_browse_name()
+                children_info.append({
+                    "node_id": child.nodeid.to_string(),
+                    "browse_name": f"{browse_name.NamespaceIndex}:{browse_name.Name}"
+                })
+            except Exception as e:
+                 # 有些節點可能無法獲取 BrowseName，進行容錯
+                 children_info.append({
+                     "node_id": child.nodeid.to_string(),
+                     "browse_name": f"Error getting name: {e}"
+                 })
+
+        # 使用 repr 轉換為字串，避免 JSON 轉換問題，或直接回傳 JSON 字串
+        # import json
+        # return json.dumps(children_info, indent=2) 
+        return f"Children of {node_id}: {children_info!r}" # 使用 repr 比較簡單
+        
+    except Exception as e:
+        return f"Error Browse children of node {node_id}: {str(e)}"
+
+@mcp.tool()
+def read_multiple_opcua_nodes(node_ids: List[str], ctx: Context) -> str:
+    """
+    Read the values of multiple OPC UA nodes in a single request.
+
+    Parameters:
+        node_ids (List[str]): A list of OPC UA node IDs to read (e.g., ['ns=2;i=2', 'ns=2;i=3']).
+
+    Returns:
+        str: A string representation of a dictionary mapping node IDs to their values, or an error message.
+    """
+    client = ctx.request_context.lifespan_context["opcua_client"]
+    try:
+        nodes_to_read = [client.get_node(nid) for nid in node_ids]
+        values = []
+        # Iterate over each node in nodes_to_read
+        for node in nodes_to_read:
+            try:
+                # Get the value of the current node
+                value = node.get_value()
+                # Append the value to the values list
+                values.append(value)
+            except Exception as e:
+                # In case of an error, append the error message
+                values.append(f"Error reading node {node.nodeid.to_string()}: {str(e)}")
+        
+        # Map node IDs to their corresponding values
+        results = {node.nodeid.to_string(): value for node, value in zip(nodes_to_read, values)}
+        
+        return f"Read multiple nodes values: {results!r}"
+        
+    except ua.UaError as e: # 捕捉特定的 OPC UA 錯誤
+         # 格式化 OPC UA 錯誤碼和名稱
+         status_name = e.code_as_name() if hasattr(e, 'code_as_name') else 'Unknown'
+         status_code_hex = f"0x{e.code:08X}" if hasattr(e, 'code') else 'N/A'
+         return f"Error reading multiple nodes {node_ids}: OPC UA Error - Status: {status_name} ({status_code_hex})"
+    except Exception as e:
+        # 捕捉其他所有潛在異常
+        return f"Error reading multiple nodes {node_ids}: {type(e).__name__} - {str(e)}"
+    
+@mcp.tool()
+def write_multiple_opcua_nodes(nodes_to_write: List[Dict[str, Any]], ctx: Context) -> str:
+    """
+    Write values to multiple OPC UA nodes in a single request.
+
+    Parameters:
+        nodes_to_write (List[Dict[str, Any]]): A list of dictionaries, where each dictionary 
+                                               contains 'node_id' (str) and 'value' (Any).
+                                               The value will be wrapped in an OPC UA Variant.
+                                               Example: [{'node_id': 'ns=2;i=2', 'value': 10.5}, 
+                                                         {'node_id': 'ns=2;i=3', 'value': 'active'}]
+
+    Returns:
+        str: A message indicating the success or failure of the write operation. 
+             Returns status codes for each write attempt.
+    """
+    client = ctx.request_context.lifespan_context["opcua_client"]
+    
+    node_ids_for_error_msg = [item.get('node_id', 'unknown_node') for item in nodes_to_write]
+
+    try:
+        nodes = [client.get_node(item['node_id']) for item in nodes_to_write]
+        
+        # Iterate over nodes and values to set each value individually
+        status_report = []
+        for node, item in zip(nodes, nodes_to_write):
+            try:
+                # Create a Variant from the value
+                value_as_variant = ua.Variant(item['value'])
+                # Set the value of the node
+                current_value = node.get_value()
+                if isinstance(current_value, (int, float)):
+                    node.set_value(float(value_as_variant.Value))
+                else:
+                    node.set_value(value_as_variant.Value)
+
+                status_report.append({
+                    "node_id": item['node_id'],
+                    "value_written": item['value'],
+                    "status": "Success"
+                })
+            except Exception as e:
+                return f"Error writing to node {node}: {str(e)}"
+        # Return the status report
+        return f"Write multiple nodes results: {status_report!r}"
+        
+    except ua.UaError as e: 
+         status_name = e.code_as_name() if hasattr(e, 'code_as_name') else 'Unknown'
+         status_code_hex = f"0x{e.code:08X}" if hasattr(e, 'code') else 'N/A'
+         return f"Error writing multiple nodes {node_ids_for_error_msg}: OPC UA Error - Status: {status_name} ({status_code_hex})"
+    except Exception as e:
+        return f"Error writing multiple nodes {node_ids_for_error_msg}: {type(e).__name__} - {str(e)}"
+
+    
 # Run the server
 if __name__ == "__main__":
     mcp.run()
