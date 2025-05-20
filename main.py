@@ -9,16 +9,6 @@ from opcua import ua #
 
 server_url = os.getenv("OPCUA_SERVER_URL", "opc.tcp://localhost:4840")
 
-ATTRIBUTE_GETTERS = {
-    "NodeClass": lambda node: node.get_node_class(),       # -> ua.NodeClass enum
-    "BrowseName": lambda node: node.get_browse_name(),      # -> ua.QualifiedName
-    "DisplayName": lambda node: node.get_display_name(),     # -> ua.LocalizedText
-    "Description": lambda node: node.get_description(),     # -> ua.LocalizedText
-    "Value": lambda node: node.get_value(),           # -> (variant)
-    "DataType": lambda node: node.get_data_type(),        # -> NodeId
-    "UserAccessLevel": lambda node: node.get_user_access_level(),# -> ua.AccessLevel enum
-    "AccessLevel": lambda node: node.get_access_level(),      # -> ua.AccessLevel enum
-}
 # Manage the lifecycle of the OPC UA client connection
 @asynccontextmanager
 async def opcua_lifespan(server: FastMCP) -> AsyncIterator[dict]:
