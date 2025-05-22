@@ -5,7 +5,7 @@ An MCP server that connects to OPC UA-enabled industrial systems, allowing AI ag
 This project is ideal for developers and engineers looking to bridge AI-driven workflows with industrial automation systems.
 
 ![GitHub License](https://img.shields.io/github/license/kukapay/opcua-mcp)
-![Python Version](https://img.shields.io/badge/python-3.10+-blue)
+![Python Version](https://img.shields.io/badge/python-3.13+-blue)
 ![Status](https://img.shields.io/badge/status-active-brightgreen.svg)
 
 ## Features
@@ -51,7 +51,7 @@ The server exposes five tools:
 ## Installation
 
 ### Prerequisites
-- Python 3.10 or higher
+- Python 3.13 or higher
 - An OPC UA server (e.g., a simulator or real industrial device)
 
 ### Install Dependencies
@@ -60,7 +60,7 @@ Clone the repository and install the required Python packages:
 ```bash
 git clone https://github.com/kukapay/opcua-mcp.git
 cd opcua-mcp
-pip install asyncua mcp[cli]
+pip install mcp[cli] opcua cryptography
 ```
 
 ### MCP Client Configuration
